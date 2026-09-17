@@ -1,0 +1,114 @@
+# Health Threshold Indicators
+
+Marks the HP levels you care about directly on an NPC's health bar, so you can see a phase change or
+a spawn coming while you fight rather than counting hits.
+
+![Health Threshold Indicators](icon.png)
+
+Set up a boss once, and its marks appear on the bar the game already draws above its head. A mark can
+be a percentage (50%), an exact HP value (275), or a repeating interval (every 25%).
+
+## Features
+
+- **Per-NPC rules.** Match by name, or by a regular expression such as `(?:Vorkath|Zulrah)`.
+- **Four kinds of mark:** `%`, `HP`, `Every %`, `Every HP`.
+- **A color per mark,** so you can tell a phase change from a spawn at a glance.
+- **Marks sit on the real bar,** including wide boss bars, and disappear when the bar does.
+- **Import and export** your setup as JSON through the clipboard. Importing lets you pick which rules to take, and flags any that would replace one you already have.
+
+## Setting it up
+
+1. Open the sidebar (the health bar icon) and click **Add NPC**.
+2. Type the NPC's name as it appears in game, for example `Alchemical Hydra`. Names are matched with
+   a case-insensitive regular expression, so `(?:Vorkath|Zulrah)` covers two bosses with one rule and
+   `.*Hydra` covers every hydra. The field turns red while the pattern is invalid.
+3. Click **Add marker**, then set a value, choose `%` or `HP`, and click the swatch to pick a color.
+
+Everything saves as you edit. The plugin ships with no rules; the presets below are a starting point.
+
+## Settings
+
+| Setting | Default | What it does |
+|---|---|---|
+| Mark width | 1 | Width of each mark, in pixels. |
+| Hide passed marks | off | Stops drawing a mark once health drops past it, leaving only what's ahead. |
+| Advanced drawing mode | on | Finds each health bar in the drawn frame and places marks exactly on it. See below. |
+| Debug logging | off | Logs mark placement to the client log, for reporting alignment problems. |
+
+### Advanced drawing mode
+
+The game doesn't expose where it draws a health bar, so the position has to be worked out from the
+NPC's position and the camera. That calculation is accurate to about a pixel, but it drifts while the
+camera moves, and it can't know a bar's real width.
+
+With advanced drawing mode on, the plugin instead looks for the bar in the frame the client has just
+drawn, in a small window around the calculated position, and places the marks on what it finds. That
+makes the marks exact, handles boss bars of any width, and hides the marks when the game hides the bar.
+
+This is the default because it costs nothing noticeable: benchmarked at 1.6 microseconds per frame
+for one NPC and under 60 microseconds for fifty, which is well inside a single frame's budget. Turn
+it off only if you use a custom health bar style it can't recognise.
+
+## Presets
+
+Copy any of this, then click **Import** in the sidebar. You'll get a list to choose from; rules whose
+name you already use are marked, and importing one replaces yours rather than adding a duplicate.
+
+Colors follow one scheme: blue for a phase change, yellow for spawns, orange for a special attack,
+red for an enrage, grey for a shield or final stand.
+
+<details>
+<summary>Boss phase preset (26 bosses)</summary>
+
+```json
+[
+  {"name": "Alchemical Hydra", "markers": [{"value": 75, "percent": true, "repeating": false, "color": -12737025}, {"value": 50, "percent": true, "repeating": false, "color": -12737025}, {"value": 25, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Cerberus", "markers": [{"value": 400, "percent": false, "repeating": false, "color": -10742}, {"value": 200, "percent": false, "repeating": false, "color": -24822}]},
+  {"name": "Nex", "markers": [{"value": 80, "percent": true, "repeating": false, "color": -12737025}, {"value": 60, "percent": true, "repeating": false, "color": -12737025}, {"value": 40, "percent": true, "repeating": false, "color": -12737025}, {"value": 20, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Phantom Muspah", "markers": [{"value": 75, "percent": true, "repeating": false, "color": -24822}, {"value": 50, "percent": true, "repeating": false, "color": -24822}, {"value": 127, "percent": false, "repeating": false, "color": -3618616}]},
+  {"name": "Abyssal Sire", "markers": [{"value": 50, "percent": true, "repeating": false, "color": -12737025}, {"value": 35, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Dusk", "markers": [{"value": 55, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Dawn", "markers": [{"value": 55, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Vet'ion.*|Calvar'ion.*", "markers": [{"value": 50, "percent": true, "repeating": false, "color": -10742}]},
+  {"name": "Araxxor", "markers": [{"value": 255, "percent": false, "repeating": false, "color": -47814}]},
+  {"name": "Vardorvis", "markers": [{"value": 570, "percent": false, "repeating": false, "color": -24822}, {"value": 33, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "The Leviathan", "markers": [{"value": 20, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "The Whisperer", "markers": [{"value": 80, "percent": true, "repeating": false, "color": -24822}, {"value": 55, "percent": true, "repeating": false, "color": -24822}, {"value": 30, "percent": true, "repeating": false, "color": -24822}]},
+  {"name": "The Hueycoatl", "markers": [{"value": 50, "percent": true, "repeating": false, "color": -3618616}]},
+  {"name": "TzTok-Jad", "markers": [{"value": 150, "percent": false, "repeating": false, "color": -10742}]},
+  {"name": "TzKal-Zuk", "markers": [{"value": 480, "percent": false, "repeating": false, "color": -10742}, {"value": 240, "percent": false, "repeating": false, "color": -47814}]},
+  {"name": "Sol Heredit", "markers": [{"value": 90, "percent": true, "repeating": false, "color": -12737025}, {"value": 75, "percent": true, "repeating": false, "color": -12737025}, {"value": 50, "percent": true, "repeating": false, "color": -12737025}, {"value": 25, "percent": true, "repeating": false, "color": -12737025}, {"value": 10, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Yama", "markers": [{"value": 66.6, "percent": true, "repeating": false, "color": -12737025}, {"value": 33.3, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Doom of Mokhaiotl", "markers": [{"value": 75, "percent": true, "repeating": false, "color": -3618616}]},
+  {"name": "The Nightmare|Phosani's Nightmare", "markers": [{"value": 66.6, "percent": true, "repeating": false, "color": -12737025}, {"value": 33.3, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Maiden of Sugadinti", "markers": [{"value": 70, "percent": true, "repeating": false, "color": -10742}, {"value": 50, "percent": true, "repeating": false, "color": -10742}, {"value": 30, "percent": true, "repeating": false, "color": -10742}]},
+  {"name": "Akkha", "markers": [{"value": 80, "percent": true, "repeating": false, "color": -10742}, {"value": 60, "percent": true, "repeating": false, "color": -10742}, {"value": 40, "percent": true, "repeating": false, "color": -10742}, {"value": 20, "percent": true, "repeating": false, "color": -10742}]},
+  {"name": "Xarpus", "markers": [{"value": 25, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Sotetseg", "markers": [{"value": 66.6, "percent": true, "repeating": false, "color": -24822}, {"value": 33.3, "percent": true, "repeating": false, "color": -24822}]},
+  {"name": "Zebak", "markers": [{"value": 85, "percent": true, "repeating": false, "color": -24822}, {"value": 70, "percent": true, "repeating": false, "color": -24822}, {"value": 55, "percent": true, "repeating": false, "color": -24822}, {"value": 40, "percent": true, "repeating": false, "color": -24822}, {"value": 25, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Verzik Vitur", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -10742}, {"value": 20, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Branda the Fire Queen|Eldric the Ice King", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -12737025}]}
+]
+```
+
+</details>
+
+Bosses whose phases are driven by something other than health are deliberately absent, including
+Vorkath (attack count), the Great Olm (disabling hands), and Zulrah (rotation).
+
+## Reporting a problem
+
+Turn on **Debug logging**, reproduce the problem, and include the `healththresholds` lines from your
+client log (`.runelite/logs/client.log`). Each line has the calculated position, the detected bar, and
+the NPC's state, which is usually enough to find the cause.
+
+## Building
+
+```
+./gradlew build     # compile and run the tests
+./gradlew run       # start a development client with the plugin loaded
+```
+
+## License
+
+BSD 2-Clause. See [LICENSE](LICENSE).
