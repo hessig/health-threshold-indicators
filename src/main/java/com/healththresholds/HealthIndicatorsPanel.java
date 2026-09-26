@@ -77,7 +77,8 @@ class HealthIndicatorsPanel extends PluginPanel
 		title.setForeground(Color.WHITE);
 		add(title);
 
-		JLabel help = new JLabel("<html><body style='width: 180px'>Add an NPC by name (regex allowed), then add markers at a % or HP value, or repeating every % or HP.</body></html>");
+		// Explicit breaks: Swing's HTML wrapping drops a word at the break under a width style
+		JLabel help = new JLabel("<html>Add an NPC by name, or a regex.<br>Mark a % or an HP value, or repeat<br>one every % or HP.</html>");
 		help.setFont(FontManager.getRunescapeSmallFont());
 		help.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		add(help);
