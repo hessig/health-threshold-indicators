@@ -9,6 +9,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
@@ -20,9 +22,12 @@ import java.awt.image.BufferedImage;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
@@ -52,17 +57,24 @@ class HealthIndicatorsPanel extends PluginPanel
 	// 5 digits fits the value field; far above any NPC's max HP
 	private static final double MAX_HP = 99_999;
 	private static final double MIN_STEP = 1;
+	private static final Icon COLLAPSE_ICON = chevron(true);
+	private static final Icon EXPAND_ICON = chevron(false);
 
 	private final List<NpcRule> npcRules;
 	private final Consumer<List<NpcRule>> onChange;
+	private final Set<String> collapsed;
+	private final Consumer<Set<String>> onCollapsedChange;
 	private final Gson gson;
 	@Nullable
 	private final ColorPickerManager colorPickerManager;
 
-	HealthIndicatorsPanel(List<NpcRule> npcRules, Consumer<List<NpcRule>> onChange, Gson gson, @Nullable ColorPickerManager colorPickerManager)
+	HealthIndicatorsPanel(List<NpcRule> npcRules, Consumer<List<NpcRule>> onChange, Set<String> collapsed,
+		Consumer<Set<String>> onCollapsedChange, Gson gson, @Nullable ColorPickerManager colorPickerManager)
 	{
 		this.npcRules = npcRules;
 		this.onChange = onChange;
+		this.collapsed = collapsed;
+		this.onCollapsedChange = onCollapsedChange;
 		this.gson = gson;
 		this.colorPickerManager = colorPickerManager;
 		rebuild();
@@ -83,14 +95,32 @@ class HealthIndicatorsPanel extends PluginPanel
 		help.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		add(help);
 
+		JPanel topButtons = new JPanel(new GridLayout(1, npcRules.isEmpty() ? 1 : 2, 4, 0));
+		topButtons.setOpaque(false);
 		JButton addNpc = new JButton("Add NPC");
 		addNpc.addActionListener(e ->
 		{
-			npcRules.add(new NpcRule());
+			NpcRule rule = new NpcRule();
+			npcRules.add(rule);
+			collapsed.remove(ImportPlan.key(rule));
 			save();
 			rebuild();
 		});
-		add(addNpc);
+		topButtons.add(addNpc);
+
+		if (!npcRules.isEmpty())
+		{
+			boolean anyExpanded = CollapsedRules.anyExpanded(collapsed, npcRules);
+			JButton toggleAll = new JButton(anyExpanded ? "Collapse all" : "Expand all");
+			toggleAll.addActionListener(e ->
+			{
+				CollapsedRules.setAll(collapsed, npcRules, anyExpanded);
+				saveCollapsed();
+				rebuild();
+			});
+			topButtons.add(toggleAll);
+		}
+		add(topButtons);
 
 		JPanel importExport = new JPanel(new GridLayout(1, 2, 4, 0));
 		importExport.setOpaque(false);
@@ -118,6 +148,39 @@ class HealthIndicatorsPanel extends PluginPanel
 		JPanel card = new JPanel(new DynamicGridLayout(0, 1, 0, 4));
 		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		card.setBorder(new EmptyBorder(6, 6, 6, 6));
+
+		boolean isCollapsed = CollapsedRules.isCollapsed(collapsed, rule);
+		JPanel nameRow = new JPanel(new BorderLayout(4, 0));
+		nameRow.setOpaque(false);
+
+		JButton chevron = new JButton(isCollapsed ? EXPAND_ICON : COLLAPSE_ICON);
+		chevron.setPreferredSize(new Dimension(18, 18));
+		chevron.setToolTipText(isCollapsed ? "Show this NPC's markers" : "Hide this NPC's markers");
+		chevron.addActionListener(e ->
+		{
+			CollapsedRules.toggle(collapsed, rule);
+			saveCollapsed();
+			rebuild();
+		});
+		nameRow.add(chevron, BorderLayout.WEST);
+
+		if (isCollapsed)
+		{
+			JLabel summary = new JLabel(rule.getName().isEmpty() ? "(unnamed)" : rule.getName());
+			summary.setForeground(Color.WHITE);
+			summary.setToolTipText(describe(rule));
+			nameRow.add(summary, BorderLayout.CENTER);
+
+			int count = rule.getMarkers().size();
+			JLabel marks = new JLabel(count + (count == 1 ? " mark" : " marks"));
+			marks.setFont(FontManager.getRunescapeSmallFont());
+			marks.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			marks.setToolTipText(describe(rule));
+			nameRow.add(marks, BorderLayout.EAST);
+
+			card.add(nameRow);
+			return card;
+		}
 
 		JTextField name = new JTextField(rule.getName());
 		name.setToolTipText("NPC name, case-insensitive regex (e.g. Alchemical Hydra)");
@@ -160,7 +223,8 @@ class HealthIndicatorsPanel extends PluginPanel
 				commitName.run();
 			}
 		});
-		card.add(name);
+		nameRow.add(name, BorderLayout.CENTER);
+		card.add(nameRow);
 
 		for (NpcRule.Marker marker : rule.getMarkers())
 		{
@@ -334,7 +398,10 @@ class HealthIndicatorsPanel extends PluginPanel
 		List<NpcRule> merged = ImportPlan.apply(npcRules, chosen);
 		npcRules.clear();
 		npcRules.addAll(merged);
+		// Arrive folded up: a large preset would otherwise bury the panel
+		chosen.forEach(rule -> collapsed.add(ImportPlan.key(rule)));
 		save();
+		saveCollapsed();
 		rebuild();
 		log.debug("import: {} rules chosen, {} replaced, {} total", chosen.size(), replaced, npcRules.size());
 	}
@@ -342,6 +409,53 @@ class HealthIndicatorsPanel extends PluginPanel
 	private void save()
 	{
 		onChange.accept(npcRules);
+	}
+
+	private void saveCollapsed()
+	{
+		CollapsedRules.prune(collapsed, npcRules);
+		onCollapsedChange.accept(collapsed);
+	}
+
+	/**
+	 * @return this rule's markers as one line, such as "75%, 50%, every 200 HP"
+	 */
+	private static String describe(NpcRule rule)
+	{
+		StringBuilder marks = new StringBuilder();
+		for (NpcRule.Marker marker : rule.getMarkers())
+		{
+			if (marks.length() > 0)
+			{
+				marks.append(", ");
+			}
+			marks.append(new Threshold(marker.getValue(), marker.isPercent(), marker.isRepeating(), Color.WHITE).describe());
+		}
+		return marks.length() == 0 ? "No markers yet" : marks.toString();
+	}
+
+	private static Icon chevron(boolean pointingDown)
+	{
+		BufferedImage image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
+		Polygon triangle = new Polygon();
+		if (pointingDown)
+		{
+			triangle.addPoint(1, 2);
+			triangle.addPoint(7, 2);
+			triangle.addPoint(4, 6);
+		}
+		else
+		{
+			triangle.addPoint(2, 1);
+			triangle.addPoint(6, 4);
+			triangle.addPoint(2, 7);
+		}
+		g.fillPolygon(triangle);
+		g.dispose();
+		return new ImageIcon(image);
 	}
 
 	private static double clamp(double value, boolean percent, boolean repeating)

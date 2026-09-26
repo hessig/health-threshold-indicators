@@ -7,7 +7,9 @@ import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 public class HealthIndicatorsPlugin extends Plugin
 {
 	static final String RULES_KEY = "npcRules";
+	// Which cards are folded up in the panel. Kept out of the rules so it never rides along in an export.
+	static final String COLLAPSED_KEY = "collapsedNpcs";
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -64,7 +68,8 @@ public class HealthIndicatorsPlugin extends Plugin
 		List<NpcRule> npcRules = loadNpcRules();
 		rules = RuleCompiler.compile(npcRules);
 
-		HealthIndicatorsPanel panel = new HealthIndicatorsPanel(npcRules, this::saveNpcRules, gson, colorPickerManager);
+		HealthIndicatorsPanel panel = new HealthIndicatorsPanel(npcRules, this::saveNpcRules,
+			loadCollapsed(), this::saveCollapsed, gson, colorPickerManager);
 		navButton = NavigationButton.builder()
 			.tooltip("Health Threshold Indicators")
 			.icon(HealthIndicatorsPanel.createIcon())
@@ -103,6 +108,33 @@ public class HealthIndicatorsPlugin extends Plugin
 			log.warn("Unable to parse saved NPC threshold rules", e);
 			return new ArrayList<>();
 		}
+	}
+
+	private Set<String> loadCollapsed()
+	{
+		String json = configManager.getConfiguration(HealthIndicatorsConfig.GROUP, COLLAPSED_KEY);
+		if (Strings.isNullOrEmpty(json))
+		{
+			return new LinkedHashSet<>();
+		}
+
+		try
+		{
+			Set<String> loaded = gson.fromJson(json, new TypeToken<LinkedHashSet<String>>()
+			{
+			}.getType());
+			return loaded != null ? loaded : new LinkedHashSet<>();
+		}
+		catch (JsonParseException e)
+		{
+			log.warn("Unable to parse which NPC cards were collapsed", e);
+			return new LinkedHashSet<>();
+		}
+	}
+
+	private void saveCollapsed(Set<String> collapsed)
+	{
+		configManager.setConfiguration(HealthIndicatorsConfig.GROUP, COLLAPSED_KEY, gson.toJson(collapsed));
 	}
 
 	private void saveNpcRules(List<NpcRule> npcRules)
