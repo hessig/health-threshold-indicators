@@ -3,7 +3,7 @@
 Marks the HP levels you care about directly on an NPC's health bar, so you can see a phase change or
 a spawn coming while you fight rather than counting hits.
 
-![Health Threshold Indicators](icon.png)
+![A white mark at 50% on an NPC's health bar](docs/marks-on-health-bar.png)
 
 Set up a boss once, and its marks appear on the bar the game already draws above its head. A mark can
 be a percentage (50%), an exact HP value (275), or a repeating interval (every 25%).
