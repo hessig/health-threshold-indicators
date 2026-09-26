@@ -1,18 +1,17 @@
 # Health Threshold Indicators
 
-Marks the HP levels you care about directly on an NPC's health bar, so you can see a phase change or
-a spawn coming while you fight rather than counting hits.
+Draws marks at chosen HP levels on an NPC's health bar.
 
 ![A white mark at 50% on an NPC's health bar](docs/marks-on-health-bar.png)
 
-Set up a boss once, and its marks appear on the bar the game already draws above its head. A mark can
-be a percentage (50%), an exact HP value (275), or a repeating interval (every 25%).
+Marks are configured per NPC and drawn on the health bar the game already displays above it. A mark
+can be a percentage (50%), an exact HP value (275), or a repeating interval (every 25%).
 
 ## Features
 
 - **Per-NPC rules.** Match by name, or by a regular expression such as `(?:Vorkath|Zulrah)`.
 - **Four kinds of mark:** `%`, `HP`, `Every %`, `Every HP`.
-- **A color per mark,** so you can tell a phase change from a spawn at a glance.
+- **A color per mark,** set individually.
 - **Marks sit on the real bar,** including wide boss bars, and disappear when the bar does.
 - **Import and export** your setup as JSON through the clipboard. Importing lets you pick which rules to take, and flags any that would replace one you already have.
 
@@ -54,8 +53,17 @@ it off only if you use a custom health bar style it can't recognise.
 Copy any of this, then click **Import** in the sidebar. You'll get a list to choose from; rules whose
 name you already use are marked, and importing one replaces yours rather than adding a duplicate.
 
-Colors follow one scheme: blue for a phase change, yellow for spawns, orange for a special attack,
-red for an enrage, grey for a shield or final stand.
+Colors in this preset are used consistently, so a mark's color tells you what kind of moment it is:
+
+| Color | Means |
+|---|---|
+| Blue | Phase change or new form |
+| Yellow | Summons adds, healers or minions |
+| Orange | Scripted special attack |
+| Red | Enrage, or attack speed increase |
+| Grey | Shielded, invulnerable, or final stand |
+
+Change any of them after importing.
 
 <details>
 <summary>Boss phase preset (26 bosses)</summary>
