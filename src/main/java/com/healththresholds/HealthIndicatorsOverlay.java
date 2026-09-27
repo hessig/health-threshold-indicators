@@ -14,6 +14,7 @@ import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -44,6 +45,7 @@ class HealthIndicatorsOverlay extends Overlay
 	private final NPCManager npcManager;
 
 	private long lastDebugLog;
+	private boolean debugHeaderLogged;
 	// Counts rendered frames, so the gap between debug lines shows how many frames were drawn
 	private long frame;
 	private final BarTracker barTracker = new BarTracker();
@@ -75,12 +77,23 @@ class HealthIndicatorsOverlay extends Overlay
 		boolean debug = false;
 		if (config.debugLogging())
 		{
+			if (!debugHeaderLogged)
+			{
+				logDebugHeader(rules.size());
+				debugHeaderLogged = true;
+			}
+
 			long now = System.currentTimeMillis();
 			if (now - lastDebugLog >= DEBUG_LOG_INTERVAL_MS)
 			{
 				lastDebugLog = now;
 				debug = true;
 			}
+		}
+		else
+		{
+			// Log the header again whenever logging is turned back on, so each report starts with it
+			debugHeaderLogged = false;
 		}
 
 		for (NPC npc : topLevel.npcs())
@@ -95,7 +108,7 @@ class HealthIndicatorsOverlay extends Overlay
 			{
 				if (rule.matches(name))
 				{
-					renderMarks(graphics, npc, rule.getThresholds(), debug);
+					renderMarks(graphics, npc, rule, debug);
 				}
 			}
 		}
@@ -103,7 +116,7 @@ class HealthIndicatorsOverlay extends Overlay
 		return null;
 	}
 
-	private void renderMarks(Graphics2D graphics, NPC npc, List<Threshold> thresholds, boolean debug)
+	private void renderMarks(Graphics2D graphics, NPC npc, ThresholdRule rule, boolean debug)
 	{
 		LocalPoint lp = npc.getLocalLocation();
 		WorldView wv = npc.getWorldView();
@@ -131,7 +144,7 @@ class HealthIndicatorsOverlay extends Overlay
 
 		if (debug)
 		{
-			logDebug(npc, lp, wv, tileHeight, baseHeight, estimate, detected, bar);
+			logDebug(npc, rule, lp, wv, tileHeight, baseHeight, estimate, detected, bar);
 		}
 
 		if (bar == null)
@@ -145,7 +158,7 @@ class HealthIndicatorsOverlay extends Overlay
 		boolean hidePassed = config.hidePassedMarks();
 		Integer maxHealth = null;
 
-		for (Threshold threshold : thresholds)
+		for (Threshold threshold : rule.getThresholds())
 		{
 			if (!threshold.isPercent() && maxHealth == null)
 			{
@@ -296,21 +309,57 @@ class HealthIndicatorsOverlay extends Overlay
 		return (g > 200 && r < 60 && b < 60) || (r > 200 && g < 60 && b < 60);
 	}
 
-	private void logDebug(NPC npc, LocalPoint lp, WorldView wv, int tileHeight, int baseHeight, Rectangle estimate,
-		@Nullable Rectangle detected, @Nullable Rectangle drawn)
+	/**
+	 * Settings that affect where the bar is drawn and how it is found, logged once per report
+	 */
+	private void logDebugHeader(int ruleCount)
+	{
+		BufferProvider buffer = client.getBufferProvider();
+		log.info("healthindicators debug header runelite={} gpu={} stretched={} canvas={}x{} buffer={}x{} "
+				+ "advancedDrawing={} markWidth={} hidePassedMarks={} rules={}",
+			RuneLiteProperties.getVersion(), client.isGpu(), client.isStretchedEnabled(),
+			client.getCanvasWidth(), client.getCanvasHeight(),
+			buffer == null ? "?" : buffer.getWidth(), buffer == null ? "?" : buffer.getHeight(),
+			config.advancedDrawing(), config.markWidth(), config.hidePassedMarks(), ruleCount);
+	}
+
+	private void logDebug(NPC npc, ThresholdRule rule, LocalPoint lp, WorldView wv, int tileHeight, int baseHeight,
+		Rectangle estimate, @Nullable Rectangle detected, @Nullable Rectangle drawn)
 	{
 		Point p0 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight);
 		Point p20 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight - 20);
 		String scale = p0 == null || p20 == null ? "?" : String.format("%.3f", (p0.getY() - p20.getY()) / 20.0);
 
-		log.info("healthindicators debug frame={} t={} npc={} id={} index={} dead={} ratio={}/{} logicalHeight={} animOffset={} local={},{} scalePxPerUnit={} "
-				+ "estimate={},{} {}px detected={} dx={} dy={} drawn={}",
-			frame, System.currentTimeMillis(), npc.getName(), npc.getId(), npc.getIndex(), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
-			npc.getLogicalHeight(), npc.getAnimationHeightOffset(), lp.getX(), lp.getY(), scale,
+		boolean advanced = config.advancedDrawing();
+		String source = !advanced ? "estimate" : detected != null ? "detected" : drawn != null ? "held" : "none";
+		// When no bar is found, the color where it was expected shows whether it's a bar the scan
+		// doesn't recognise (a shield, a custom style) or not a bar at all
+		String pixel = advanced && detected == null
+			? pixelAt(estimate.x + estimate.width / 2, estimate.y + BAR_HEIGHT / 2)
+			: "-";
+
+		log.info("healthindicators debug frame={} t={} npc={} id={} index={} rule={} maxHp={} dead={} ratio={}/{} "
+				+ "logicalHeight={} animOffset={} local={},{} zoom={} pitch={} yaw={} scalePxPerUnit={} "
+				+ "estimate={},{} {}px detected={} dx={} dy={} source={} pixel={} drawn={}",
+			frame, System.currentTimeMillis(), npc.getName(), npc.getId(), npc.getIndex(), rule.getNamePattern().pattern(),
+			npcManager.getHealth(npc.getId()), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
+			npc.getLogicalHeight(), npc.getAnimationHeightOffset(), lp.getX(), lp.getY(),
+			client.getScale(), client.getCameraPitch(), client.getCameraYaw(), scale,
 			estimate.x, estimate.y, estimate.width,
 			detected == null ? "none" : detected.x + "," + detected.y + " " + detected.width + "px",
 			detected == null ? "-" : detected.x - estimate.x,
 			detected == null ? "-" : detected.y - estimate.y,
+			source, pixel,
 			drawn == null ? "none" : drawn.x + "," + drawn.y + " " + drawn.width + "px");
+	}
+
+	private String pixelAt(int x, int y)
+	{
+		BufferProvider buffer = client.getBufferProvider();
+		if (buffer == null || x < 0 || y < 0 || x >= buffer.getWidth() || y >= buffer.getHeight())
+		{
+			return "offscreen";
+		}
+		return String.format("#%06X", buffer.getPixels()[y * buffer.getWidth() + x] & 0xFFFFFF);
 	}
 }

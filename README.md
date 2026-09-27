@@ -117,9 +117,20 @@ Vorkath (attack count), the Great Olm (disabling hands), and Zulrah (rotation).
 
 ## Reporting a problem
 
-Turn on **Debug logging**, reproduce the problem, and include the `healththresholds` lines from your
-client log (`.runelite/logs/client.log`). Each line has the calculated position, the detected bar, and
-the NPC's state, which is usually enough to find the cause.
+1. In the plugin's settings, turn on **Debug logging**.
+2. Reproduce the problem. A minute or so is plenty; turn logging off again afterwards.
+3. Open the client log, at `%USERPROFILE%\.runelite\logs\client.log` on Windows or
+   `~/.runelite/logs/client.log` on macOS and Linux.
+4. Include the lines containing `healthindicators debug` in your report. The rest of the log covers
+   the whole client and isn't needed.
+
+The first line records the RuneLite version, whether GPU and stretched mode are on, the window size,
+and this plugin's settings. After that, each marked NPC gets a line about four times a second, with
+the rule it matched, its health, the camera, where the plugin calculated the bar to be, where it
+found it, and where the marks went.
+
+A short screen recording of the problem helps a lot, especially with the log lines from the same
+moment: the log shows where the plugin thought the bar was, and the video shows where it really was.
 
 ## Building
 
