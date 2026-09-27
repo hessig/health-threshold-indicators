@@ -125,24 +125,18 @@ class HealthIndicatorsOverlay extends Overlay
 		Rectangle estimate = new Rectangle(anchor.getX() - estimatedWidth / 2, anchor.getY() - BAR_TOP_OFFSET, estimatedWidth, BAR_HEIGHT);
 		boolean advanced = config.advancedDrawing();
 		Rectangle detected = advanced ? findBar(estimate) : null;
-
-		// A dead NPC's bar is hidden, so drop the marks with it rather than leaving them floating
-		if (advanced && detected == null && npc.isDead())
-		{
-			return;
-		}
-
-		// On a brief miss, keep the offset last measured for this NPC rather than snapping to the
-		// estimate. With no history (or the scan off), fall back to the estimate.
-		Rectangle bar = advanced ? barTracker.resolve(npc.getIndex(), estimate, detected, System.currentTimeMillis()) : null;
-		if (bar == null)
-		{
-			bar = estimate;
-		}
+		Rectangle bar = advanced
+			? placeOnDetectedBar(barTracker, npc.getIndex(), npc.isDead(), estimate, detected, System.currentTimeMillis())
+			: estimate;
 
 		if (debug)
 		{
 			logDebug(npc, lp, wv, tileHeight, baseHeight, estimate, detected, bar);
+		}
+
+		if (bar == null)
+		{
+			return;
 		}
 
 		int barX = bar.x;
@@ -176,6 +170,25 @@ class HealthIndicatorsOverlay extends Overlay
 				}
 			}
 		}
+	}
+
+	/**
+	 * Where to draw in advanced mode. Marks only go on a bar that was actually found: this frame,
+	 * or recently enough that a brief miss keeps them in place. A bar that is never found (another
+	 * color, such as a shield, or no overhead bar at all) gets no marks rather than floating ones.
+	 *
+	 * @return the bar to draw on, or null to draw nothing
+	 */
+	@Nullable
+	static Rectangle placeOnDetectedBar(BarTracker tracker, int npcIndex, boolean dead, Rectangle estimate,
+		@Nullable Rectangle detected, long now)
+	{
+		// A dead NPC's bar is hidden, so drop the marks with it rather than holding them
+		if (detected == null && dead)
+		{
+			return null;
+		}
+		return tracker.resolve(npcIndex, estimate, detected, now);
 	}
 
 	/**
@@ -284,20 +297,20 @@ class HealthIndicatorsOverlay extends Overlay
 	}
 
 	private void logDebug(NPC npc, LocalPoint lp, WorldView wv, int tileHeight, int baseHeight, Rectangle estimate,
-		@Nullable Rectangle detected, Rectangle drawn)
+		@Nullable Rectangle detected, @Nullable Rectangle drawn)
 	{
 		Point p0 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight);
 		Point p20 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight - 20);
 		String scale = p0 == null || p20 == null ? "?" : String.format("%.3f", (p0.getY() - p20.getY()) / 20.0);
 
 		log.info("healthindicators debug frame={} t={} npc={} id={} index={} dead={} ratio={}/{} logicalHeight={} animOffset={} local={},{} scalePxPerUnit={} "
-				+ "estimate={},{} {}px detected={} dx={} dy={} drawn={},{} {}px",
+				+ "estimate={},{} {}px detected={} dx={} dy={} drawn={}",
 			frame, System.currentTimeMillis(), npc.getName(), npc.getId(), npc.getIndex(), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
 			npc.getLogicalHeight(), npc.getAnimationHeightOffset(), lp.getX(), lp.getY(), scale,
 			estimate.x, estimate.y, estimate.width,
 			detected == null ? "none" : detected.x + "," + detected.y + " " + detected.width + "px",
 			detected == null ? "-" : detected.x - estimate.x,
 			detected == null ? "-" : detected.y - estimate.y,
-			drawn.x, drawn.y, drawn.width);
+			drawn == null ? "none" : drawn.x + "," + drawn.y + " " + drawn.width + "px");
 	}
 }

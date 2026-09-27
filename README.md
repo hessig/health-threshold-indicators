@@ -43,10 +43,12 @@ camera moves, and it can't know a bar's real width.
 With advanced drawing mode on, the plugin instead looks for the bar in the frame the client has just
 drawn, in a small window around the calculated position, and places the marks on what it finds. That
 makes the marks exact, handles boss bars of any width, and hides the marks when the game hides the bar.
+Marks are only drawn on a bar it has found, so a bar it doesn't recognise, such as a shield bar in
+another color, gets no marks rather than misplaced ones.
 
 This is the default because it costs nothing noticeable: benchmarked at 1.6 microseconds per frame
 for one NPC and under 60 microseconds for fifty, which is well inside a single frame's budget. Turn
-it off only if you use a custom health bar style it can't recognise.
+it off if you use a custom health bar style it can't recognise, which otherwise leaves you with no marks.
 
 ## Presets
 
