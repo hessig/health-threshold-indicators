@@ -64,11 +64,12 @@ Colors in this preset are used consistently, so a mark's color tells you what ki
 | Orange | Scripted special attack |
 | Red | Enrage, or attack speed increase |
 | Grey | Shielded, invulnerable, or final stand |
+| Pink | Finish off with a Slayer item |
 
 Change any of them after importing.
 
 <details>
-<summary>Boss phase preset (26 bosses)</summary>
+<summary>Preset (26 bosses, 5 Slayer monsters)</summary>
 
 ```json
 [
@@ -97,11 +98,19 @@ Change any of them after importing.
   {"name": "Sotetseg", "markers": [{"value": 66.6, "percent": true, "repeating": false, "color": -24822}, {"value": 33.3, "percent": true, "repeating": false, "color": -24822}]},
   {"name": "Zebak", "markers": [{"value": 85, "percent": true, "repeating": false, "color": -24822}, {"value": 70, "percent": true, "repeating": false, "color": -24822}, {"value": 55, "percent": true, "repeating": false, "color": -24822}, {"value": 40, "percent": true, "repeating": false, "color": -24822}, {"value": 25, "percent": true, "repeating": false, "color": -47814}]},
   {"name": "Verzik Vitur", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -10742}, {"value": 20, "percent": true, "repeating": false, "color": -47814}]},
-  {"name": "Branda the Fire Queen|Eldric the Ice King", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -12737025}]}
+  {"name": "Branda the Fire Queen|Eldric the Ice King", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Gargoyle", "markers": [{"value": 8, "percent": false, "repeating": false, "color": -42286}]},
+  {"name": "Zygomite|Ancient Zygomite", "markers": [{"value": 7, "percent": false, "repeating": false, "color": -42286}]},
+  {"name": "Rockslug", "markers": [{"value": 4, "percent": false, "repeating": false, "color": -42286}]},
+  {"name": "Desert Lizard|Small Lizard", "markers": [{"value": 4, "percent": false, "repeating": false, "color": -42286}]},
+  {"name": "Elder custodian stalker", "markers": [{"value": 20, "percent": true, "repeating": false, "color": -24822}]}
 ]
 ```
 
 </details>
+
+The Slayer rules mark when monsters like gargoyles and rockslugs can be finished off with their item,
+and when elder custodian stalkers start their bleed special.
 
 Bosses whose phases are driven by something other than health are deliberately absent, including
 Vorkath (attack count), the Great Olm (disabling hands), and Zulrah (rotation).
