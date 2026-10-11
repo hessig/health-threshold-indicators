@@ -1,0 +1,25 @@
+name: Bug report
+description: Marks missing, misplaced, or something else not working
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! Debug log lines and a screenshot or clip make problems much quicker to track down.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Which NPC, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log lines
+      description: Turn on **Debug logging** in the plugin's settings, reproduce the problem, then paste the lines containing `healthindicators debug` from your client.log, or attach them as a file below. Steps are in [Reporting a problem](https://github.com/hessig/health-threshold-indicators#reporting-a-problem).
+      render: text
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots, clips or log files
+      description: Drag files here.

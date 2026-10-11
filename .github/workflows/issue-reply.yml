@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   reply:
+    # The bug report form already asks for these; its issues always contain this heading
+    if: ${{ !contains(github.event.issue.body, '### Debug log lines') }}
     runs-on: ubuntu-latest
     steps:
       - run: gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
