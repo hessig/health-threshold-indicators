@@ -1,0 +1,23 @@
+name: Issue auto-reply
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          BODY: |
+            Thanks for the report! If you haven't already, these help a lot:
+
+            1. Debug log lines: turn on **Debug logging** in the plugin's settings, reproduce the problem, then paste the lines containing `healthindicators debug` from your client.log. Steps are in [Reporting a problem](https://github.com/hessig/health-threshold-indicators#reporting-a-problem).
+            2. A screenshot or short clip.
