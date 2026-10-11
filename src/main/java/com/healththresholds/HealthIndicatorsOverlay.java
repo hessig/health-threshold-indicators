@@ -12,10 +12,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.BufferProvider;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.ui.overlay.Overlay;
@@ -57,6 +60,7 @@ class HealthIndicatorsOverlay extends Overlay
 	// Counts rendered frames, so the gap between debug lines shows how many frames were drawn
 	private long frame;
 	private final BarTracker barTracker = new BarTracker();
+	private final MaxHealthTracker maxHealthTracker = new MaxHealthTracker();
 
 	@Inject
 	private HealthIndicatorsOverlay(Client client, HealthIndicatorsPlugin plugin, HealthIndicatorsConfig config, NPCManager npcManager)
@@ -171,7 +175,7 @@ class HealthIndicatorsOverlay extends Overlay
 		{
 			if (!threshold.isPercent() && maxHealth == null)
 			{
-				maxHealth = npcManager.getHealth(npc.getId());
+				maxHealth = maxHealth(npc);
 			}
 
 			graphics.setColor(threshold.getColor());
@@ -192,6 +196,18 @@ class HealthIndicatorsOverlay extends Overlay
 				}
 			}
 		}
+	}
+
+	@Nullable
+	private Integer maxHealth(NPC npc)
+	{
+		NPCComposition composition = npc.getComposition();
+		if (composition == null)
+		{
+			return npcManager.getHealth(npc.getId());
+		}
+		return maxHealthTracker.resolve(composition.getId(), client.getVarpValue(VarPlayerID.HPBAR_HUD_NPC),
+			client.getVarbitValue(VarbitID.HPBAR_HUD_BASEHP), npcManager.getHealth(npc.getId()));
 	}
 
 	/**
@@ -394,11 +410,11 @@ class HealthIndicatorsOverlay extends Overlay
 			? pixelAt(estimate.x + estimate.width / 2, estimate.y + BAR_HEIGHT / 2)
 			: "-";
 
-		log.info("healthindicators debug frame={} t={} npc={} id={} index={} rule={} maxHp={} dead={} ratio={}/{} "
+		log.info("healthindicators debug frame={} t={} npc={} id={} index={} rule={} maxHp={} statsHp={} hudNpc={} dead={} ratio={}/{} "
 				+ "logicalHeight={} animOffset={} local={},{} zoom={} pitch={} yaw={} scalePxPerUnit={} "
 				+ "estimate={},{} {}px detected={} dx={} dy={} source={} pixel={} drawn={} highDetail={}",
 			frame, System.currentTimeMillis(), npc.getName(), npc.getId(), npc.getIndex(), rule.getNamePattern().pattern(),
-			npcManager.getHealth(npc.getId()), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
+			maxHealth(npc), npcManager.getHealth(npc.getId()), client.getVarpValue(VarPlayerID.HPBAR_HUD_NPC), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
 			npc.getLogicalHeight(), npc.getAnimationHeightOffset(), lp.getX(), lp.getY(),
 			client.getScale(), client.getCameraPitch(), client.getCameraYaw(), scale,
 			estimate.x, estimate.y, estimate.width,

@@ -25,6 +25,10 @@ can be a percentage (50%), an exact HP value (275), or a repeating interval (eve
 
 Everything saves as you edit. The plugin ships with no rules; the presets below are a starting point.
 
+`HP` marks need the NPC's max HP. It comes from the game's boss health overlay when that is showing,
+and otherwise from RuneLite's NPC data, which lacks some NPCs. Use `%` marks if an `HP` mark doesn't
+appear.
+
 ## Settings
 
 | Setting | Default | What it does |
