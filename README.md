@@ -46,6 +46,9 @@ makes the marks exact, handles boss bars of any width, and hides the marks when 
 Marks are only drawn on a bar it has found, so a bar it doesn't recognise, such as a shield bar in
 another color, gets no marks rather than misplaced ones.
 
+The high detail health bars from RuneLite's Interface Styles plugin are recognised too, and marks
+are drawn inside their border.
+
 This is the default because it costs nothing noticeable: benchmarked at 1.6 microseconds per frame
 for one NPC and under 60 microseconds for fifty, which is well inside a single frame's budget. Turn
 it off if you use a custom health bar style it can't recognise, which otherwise leaves you with no marks.

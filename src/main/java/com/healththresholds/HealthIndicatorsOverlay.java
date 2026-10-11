@@ -1,9 +1,11 @@
 package com.healththresholds;
 
+import com.google.common.collect.ImmutableSet;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,12 @@ class HealthIndicatorsOverlay extends Overlay
 	// Gaps a run may bridge, such as another overlay's mark drawn across the bar
 	private static final int MAX_GAP = 2;
 	private static final long DEBUG_LOG_INTERVAL_MS = 250;
+	// Interface Styles' high detail bars are 7px sprites filled inside a 1px border, so marks go on that
+	// inner area. These are the standard bar widths it replaces; 30px bars get its 40px sprite.
+	private static final Set<Integer> HIGH_DETAIL_WIDTHS = ImmutableSet.of(30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160);
+	private static final int HIGH_DETAIL_BORDER = 1;
+	// Measured in game: the sprite's bottom lines up with a standard bar's, so its top sits this much higher
+	private static final int HIGH_DETAIL_EXTRA_HEIGHT = 2;
 
 	private final Client client;
 	private final HealthIndicatorsPlugin plugin;
@@ -134,17 +142,18 @@ class HealthIndicatorsOverlay extends Overlay
 		}
 
 		// A health bar's scale is its width in pixels (30 for standard NPCs, wider for bosses)
-		int estimatedWidth = npc.getHealthScale();
-		Rectangle estimate = new Rectangle(anchor.getX() - estimatedWidth / 2, anchor.getY() - BAR_TOP_OFFSET, estimatedWidth, BAR_HEIGHT);
+		int scale = npc.getHealthScale();
+		boolean highDetail = plugin.isHighDetailBars() && HIGH_DETAIL_WIDTHS.contains(scale);
+		Rectangle estimate = estimateBar(anchor, scale, highDetail);
 		boolean advanced = config.advancedDrawing();
-		Rectangle detected = advanced ? findBar(estimate) : null;
+		Rectangle detected = advanced ? findBar(estimate, highDetail) : null;
 		Rectangle bar = advanced
 			? placeOnDetectedBar(barTracker, npc.getIndex(), npc.isDead(), estimate, detected, System.currentTimeMillis())
 			: estimate;
 
 		if (debug)
 		{
-			logDebug(npc, rule, lp, wv, tileHeight, baseHeight, estimate, detected, bar);
+			logDebug(npc, rule, lp, wv, tileHeight, baseHeight, highDetail, estimate, detected, bar);
 		}
 
 		if (bar == null)
@@ -186,6 +195,22 @@ class HealthIndicatorsOverlay extends Overlay
 	}
 
 	/**
+	 * @return where the bar's fill should be drawn: the whole bar for a standard one, or the area
+	 * inside the border for a high detail one
+	 */
+	static Rectangle estimateBar(Point anchor, int scale, boolean highDetail)
+	{
+		if (!highDetail)
+		{
+			return new Rectangle(anchor.getX() - scale / 2, anchor.getY() - BAR_TOP_OFFSET, scale, BAR_HEIGHT);
+		}
+		int spriteWidth = scale == 30 ? 40 : scale;
+		int spriteTop = anchor.getY() - BAR_TOP_OFFSET - HIGH_DETAIL_EXTRA_HEIGHT;
+		return new Rectangle(anchor.getX() - spriteWidth / 2 + HIGH_DETAIL_BORDER, spriteTop + HIGH_DETAIL_BORDER,
+			spriteWidth - 2 * HIGH_DETAIL_BORDER, BAR_HEIGHT);
+	}
+
+	/**
 	 * Where to draw in advanced mode. Marks only go on a bar that was actually found: this frame,
 	 * or recently enough that a brief miss keeps them in place. A bar that is never found (another
 	 * color, such as a shield, or no overhead bar at all) gets no marks rather than floating ones.
@@ -211,14 +236,14 @@ class HealthIndicatorsOverlay extends Overlay
 	 * @return the bar's bounds, or null if no bar is drawn near the estimate
 	 */
 	@Nullable
-	private Rectangle findBar(Rectangle estimate)
+	private Rectangle findBar(Rectangle estimate, boolean highDetail)
 	{
 		BufferProvider buffer = client.getBufferProvider();
-		return findBar(buffer.getPixels(), buffer.getWidth(), buffer.getHeight(), estimate);
+		return findBar(buffer.getPixels(), buffer.getWidth(), buffer.getHeight(), estimate, highDetail);
 	}
 
 	@Nullable
-	static Rectangle findBar(int[] pixels, int width, int height, Rectangle estimate)
+	static Rectangle findBar(int[] pixels, int width, int height, Rectangle estimate, boolean highDetail)
 	{
 		// The bar is always within a few pixels of the estimate sideways too, so the window stays
 		// narrow even for wide boss bars; wider windows picked up red and green scenery nearby.
@@ -228,21 +253,40 @@ class HealthIndicatorsOverlay extends Overlay
 		int y1 = Math.min(height, estimate.y + BAR_HEIGHT + VERTICAL_SEARCH_RADIUS);
 
 		Rectangle best = null;
-		boolean previousRowMatched = false;
-		for (int y = y0; y < y1; y++)
+		int barTop = -1;
+		int[] barRun = null;
+		for (int y = y0; y <= y1; y++)
 		{
-			int[] run = longestRun(pixels, width, y, x0, x1);
+			int[] run = y < y1 ? longestRun(pixels, width, y, x0, x1, highDetail) : null;
 			// A bar's width equals its health scale, so a run much shorter or longer is something else
-			boolean matched = Math.abs(run[1] - estimate.width) <= WIDTH_TOLERANCE;
-			// Only consider the top row of each bar, and prefer the one nearest the estimate
-			if (matched && !previousRowMatched
-				&& (best == null || Math.abs(y - estimate.y) < Math.abs(best.y - estimate.y)))
+			boolean matched = run != null && Math.abs(run[1] - estimate.width) <= WIDTH_TOLERANCE;
+			if (matched && barTop < 0)
 			{
-				best = new Rectangle(trimmedStart(run, estimate), y, estimate.width, BAR_HEIGHT);
+				barTop = y;
+				barRun = run;
 			}
-			previousRowMatched = matched;
+			else if (matched && y - barTop < BAR_HEIGHT && widthError(run, estimate) < widthError(barRun, estimate))
+			{
+				// A high detail bar's top row is shortened by its rounded corners, so take the
+				// position from the row that best fits
+				barRun = run;
+			}
+			else if (!matched && barTop >= 0)
+			{
+				// Prefer the bar nearest the estimate
+				if (best == null || Math.abs(barTop - estimate.y) < Math.abs(best.y - estimate.y))
+				{
+					best = new Rectangle(trimmedStart(barRun, estimate), barTop, estimate.width, BAR_HEIGHT);
+				}
+				barTop = -1;
+			}
 		}
 		return best;
+	}
+
+	private static int widthError(int[] run, Rectangle estimate)
+	{
+		return Math.abs(run[1] - estimate.width);
 	}
 
 	/**
@@ -262,7 +306,7 @@ class HealthIndicatorsOverlay extends Overlay
 	 * @return {start, length} of the longest run of bar pixels in a row, bridging gaps of up to
 	 * {@link #MAX_GAP} pixels so another overlay's mark over the bar doesn't split it
 	 */
-	private static int[] longestRun(int[] pixels, int width, int y, int x0, int x1)
+	private static int[] longestRun(int[] pixels, int width, int y, int x0, int x1, boolean highDetail)
 	{
 		int bestStart = -1;
 		int bestLength = 0;
@@ -270,7 +314,7 @@ class HealthIndicatorsOverlay extends Overlay
 		int lastBar = -1;
 		for (int x = x0; x < x1; x++)
 		{
-			if (!isBarPixel(pixels[y * width + x]))
+			if (!(highDetail ? isHighDetailBarPixel(pixels[y * width + x]) : isBarPixel(pixels[y * width + x])))
 			{
 				continue;
 			}
@@ -310,21 +354,33 @@ class HealthIndicatorsOverlay extends Overlay
 	}
 
 	/**
+	 * High detail bars are shaded: the green runs from yellow-green to dark green and the red is
+	 * darker, so they need a looser test. It only applies while those bars are in use.
+	 */
+	private static boolean isHighDetailBarPixel(int rgb)
+	{
+		int r = (rgb >> 16) & 0xFF;
+		int g = (rgb >> 8) & 0xFF;
+		int b = rgb & 0xFF;
+		return (g >= 0x90 && g - r >= 0x20 && b < 0x30) || (r >= 0x70 && g < 0x30 && b < 0x20);
+	}
+
+	/**
 	 * Settings that affect where the bar is drawn and how it is found, logged once per report
 	 */
 	private void logDebugHeader(int ruleCount)
 	{
 		BufferProvider buffer = client.getBufferProvider();
 		log.info("healthindicators debug header runelite={} gpu={} stretched={} canvas={}x{} buffer={}x{} "
-				+ "advancedDrawing={} markWidth={} hidePassedMarks={} rules={}",
+				+ "advancedDrawing={} markWidth={} hidePassedMarks={} highDetailBars={} rules={}",
 			RuneLiteProperties.getVersion(), client.isGpu(), client.isStretchedEnabled(),
 			client.getCanvasWidth(), client.getCanvasHeight(),
 			buffer == null ? "?" : buffer.getWidth(), buffer == null ? "?" : buffer.getHeight(),
-			config.advancedDrawing(), config.markWidth(), config.hidePassedMarks(), ruleCount);
+			config.advancedDrawing(), config.markWidth(), config.hidePassedMarks(), plugin.isHighDetailBars(), ruleCount);
 	}
 
 	private void logDebug(NPC npc, ThresholdRule rule, LocalPoint lp, WorldView wv, int tileHeight, int baseHeight,
-		Rectangle estimate, @Nullable Rectangle detected, @Nullable Rectangle drawn)
+		boolean highDetail, Rectangle estimate, @Nullable Rectangle detected, @Nullable Rectangle drawn)
 	{
 		Point p0 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight);
 		Point p20 = Perspective.localToCanvas(client, wv.getId(), lp.getX(), lp.getY(), tileHeight - baseHeight - 20);
@@ -340,7 +396,7 @@ class HealthIndicatorsOverlay extends Overlay
 
 		log.info("healthindicators debug frame={} t={} npc={} id={} index={} rule={} maxHp={} dead={} ratio={}/{} "
 				+ "logicalHeight={} animOffset={} local={},{} zoom={} pitch={} yaw={} scalePxPerUnit={} "
-				+ "estimate={},{} {}px detected={} dx={} dy={} source={} pixel={} drawn={}",
+				+ "estimate={},{} {}px detected={} dx={} dy={} source={} pixel={} drawn={} highDetail={}",
 			frame, System.currentTimeMillis(), npc.getName(), npc.getId(), npc.getIndex(), rule.getNamePattern().pattern(),
 			npcManager.getHealth(npc.getId()), npc.isDead(), npc.getHealthRatio(), npc.getHealthScale(),
 			npc.getLogicalHeight(), npc.getAnimationHeightOffset(), lp.getX(), lp.getY(),
@@ -350,7 +406,7 @@ class HealthIndicatorsOverlay extends Overlay
 			detected == null ? "-" : detected.x - estimate.x,
 			detected == null ? "-" : detected.y - estimate.y,
 			source, pixel,
-			drawn == null ? "none" : drawn.x + "," + drawn.y + " " + drawn.width + "px");
+			drawn == null ? "none" : drawn.x + "," + drawn.y + " " + drawn.width + "px", highDetail);
 	}
 
 	private String pixelAt(int x, int y)

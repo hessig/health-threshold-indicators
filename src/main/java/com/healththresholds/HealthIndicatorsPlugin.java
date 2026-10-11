@@ -14,6 +14,9 @@ import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneLiteConfig;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -32,6 +35,10 @@ public class HealthIndicatorsPlugin extends Plugin
 	static final String RULES_KEY = "npcRules";
 	// Which cards are folded up in the panel. Kept out of the rules so it never rides along in an export.
 	static final String COLLAPSED_KEY = "collapsedNpcs";
+	// Interface Styles' "High detail health bars" replaces the bar sprites the overlay looks for
+	private static final String INTERFACE_STYLES_GROUP = "interfaceStyles";
+	private static final String HD_BARS_KEY = "hdHealthBars";
+	private static final String INTERFACE_STYLES_ENABLED_KEY = "interfacestylesplugin";
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -56,6 +63,9 @@ public class HealthIndicatorsPlugin extends Plugin
 	@Getter
 	private volatile List<ThresholdRule> rules = Collections.emptyList();
 
+	@Getter
+	private volatile boolean highDetailBars;
+
 	@Provides
 	HealthIndicatorsConfig provideConfig(ConfigManager configManager)
 	{
@@ -67,6 +77,7 @@ public class HealthIndicatorsPlugin extends Plugin
 	{
 		List<NpcRule> npcRules = loadNpcRules();
 		rules = RuleCompiler.compile(npcRules);
+		highDetailBars = readHighDetailBars();
 
 		HealthIndicatorsPanel panel = new HealthIndicatorsPanel(npcRules, this::saveNpcRules,
 			loadCollapsed(), this::saveCollapsed, gson, colorPickerManager);
@@ -87,6 +98,22 @@ public class HealthIndicatorsPlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		rules = Collections.emptyList();
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (INTERFACE_STYLES_GROUP.equals(event.getGroup())
+			|| (RuneLiteConfig.GROUP_NAME.equals(event.getGroup()) && INTERFACE_STYLES_ENABLED_KEY.equals(event.getKey())))
+		{
+			highDetailBars = readHighDetailBars();
+		}
+	}
+
+	private boolean readHighDetailBars()
+	{
+		return Boolean.parseBoolean(configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, INTERFACE_STYLES_ENABLED_KEY))
+			&& Boolean.parseBoolean(configManager.getConfiguration(INTERFACE_STYLES_GROUP, HD_BARS_KEY));
 	}
 
 	private List<NpcRule> loadNpcRules()
