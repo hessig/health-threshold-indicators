@@ -76,7 +76,7 @@ Colors in this preset are used consistently, so a mark's color tells you what ki
 Change any of them after importing.
 
 <details>
-<summary>Preset (26 bosses, 5 Slayer monsters)</summary>
+<summary>Preset (30 bosses, 5 Slayer monsters)</summary>
 
 ```json
 [
@@ -105,6 +105,10 @@ Change any of them after importing.
   {"name": "Sotetseg", "markers": [{"value": 66.6, "percent": true, "repeating": false, "color": -24822}, {"value": 33.3, "percent": true, "repeating": false, "color": -24822}]},
   {"name": "Zebak", "markers": [{"value": 85, "percent": true, "repeating": false, "color": -24822}, {"value": 70, "percent": true, "repeating": false, "color": -24822}, {"value": 55, "percent": true, "repeating": false, "color": -24822}, {"value": 40, "percent": true, "repeating": false, "color": -24822}, {"value": 25, "percent": true, "repeating": false, "color": -47814}]},
   {"name": "Verzik Vitur", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -10742}, {"value": 20, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Archive Guardian", "markers": [{"value": 30, "percent": true, "repeating": false, "color": -12737025}]},
+  {"name": "Ezekiel", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Moia", "markers": [{"value": 33, "percent": true, "repeating": false, "color": -47814}]},
+  {"name": "Dreadnoth the Jellied", "markers": [{"value": 85, "percent": true, "repeating": false, "color": -24822}, {"value": 65, "percent": true, "repeating": false, "color": -24822}, {"value": 45, "percent": true, "repeating": false, "color": -24822}, {"value": 25, "percent": true, "repeating": false, "color": -47814}]},
   {"name": "Branda the Fire Queen|Eldric the Ice King", "markers": [{"value": 35, "percent": true, "repeating": false, "color": -12737025}]},
   {"name": "Gargoyle", "markers": [{"value": 8, "percent": false, "repeating": false, "color": -42286}]},
   {"name": "Zygomite|Ancient Zygomite", "markers": [{"value": 7, "percent": false, "repeating": false, "color": -42286}]},
@@ -120,7 +124,8 @@ The Slayer rules mark when monsters like gargoyles and rockslugs can be finished
 and when elder custodian stalkers start their bleed special.
 
 Bosses whose phases are driven by something other than health are deliberately absent, including
-Vorkath (attack count), the Great Olm (disabling hands), and Zulrah (rotation).
+Vorkath (attack count), the Great Olm (disabling hands), Zulrah (rotation), and from The Fractured Archive
+Xarth (pillars), Ocellus (shield and quadrants) and the Dagon'hai (ritual shield).
 
 ## Reporting a problem
 
