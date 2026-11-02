@@ -151,6 +151,10 @@ moment: the log shows where the plugin thought the bar was, and the video shows 
 ./gradlew run       # start a development client with the plugin loaded
 ```
 
+## Support
+
+<a href="https://ko-fi.com/hessig"><img src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" height="36" alt="Buy me a coffee"></a>
+
 ## License
 
 BSD 2-Clause. See [LICENSE](LICENSE).
