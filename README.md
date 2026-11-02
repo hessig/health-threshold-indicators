@@ -1,5 +1,7 @@
 # Health Threshold Indicators
 
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/hessig)
+
 Draws marks at chosen HP levels on an NPC's health bar.
 
 ![A white mark at 50% on an NPC's health bar](docs/marks-on-health-bar.png)
@@ -150,10 +152,6 @@ moment: the log shows where the plugin thought the bar was, and the video shows 
 ./gradlew build     # compile and run the tests
 ./gradlew run       # start a development client with the plugin loaded
 ```
-
-## Support
-
-<a href="https://ko-fi.com/hessig"><img src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" height="36" alt="Buy me a coffee"></a>
 
 ## License
 
